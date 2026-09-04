@@ -73,12 +73,12 @@ environment. Do not hand-roll discovery, code exchange, JWT validation, or key r
 
 The exact library may own route internals, but the application contract is:
 
-| Purpose       | Candidate route              | Access                                        |
-| ------------- | ---------------------------- | --------------------------------------------- |
-| Start sign-in | `/api/auth/signin/mystira`   | Anonymous                                     |
-| Callback      | `/api/auth/callback/mystira` | Anonymous, transaction-bound                  |
-| Session view  | `/api/auth/session`          | Returns minimal principal or signed-out state |
-| Logout        | `/api/auth/signout`          | Session-bound; local logout required          |
+| Purpose       | Candidate route              | Access                                              |
+| ------------- | ---------------------------- | --------------------------------------------------- |
+| Start sign-in | `/api/auth/signin/mystira`   | Anonymous                                           |
+| Callback      | `/api/auth/callback/mystira` | Anonymous, transaction-bound                        |
+| Session view  | `/api/auth/session`          | Minimal principal or signed-out state; never cached |
+| Logout        | `/api/auth/signout`          | Session-bound; local logout required                |
 
 The selected production callback is
 `https://www.veritasvault.net/api/auth/callback/mystira`. It must not be registered until the route
@@ -87,11 +87,16 @@ is confirmed in merged code.
 ### Authorization request
 
 - Discovery issuer: `https://identity.mystira.app/` in production.
+- Every discovered authorization, token, user-info, logout, and JWKS endpoint must use HTTPS and
+  match the issuer origin unless its exact origin is explicitly allowlisted in reviewed
+  configuration. Reject discovery documents containing any other endpoint.
 - `response_type=code`.
 - Scopes initially `openid profile email`; no `offline_access` without a concrete background-use
   case and refresh-token custody design.
 - Unique high-entropy `state` and `nonce` per transaction.
 - High-entropy PKCE verifier retained server-side; `code_challenge_method=S256`.
+- Bind state, nonce, verifier, and return destination to a short-lived, host-only pre-auth browser
+  cookie or server session. Rotate into a new authenticated session after a successful callback.
 - `redirect_uri` built from trusted configuration, never request headers.
 - Return destination restricted to a same-origin relative allowlist.
 
@@ -99,6 +104,8 @@ is confirmed in merged code.
 
 - Consume each transaction once and reject missing, expired, replayed, or state-mismatched flows.
 - Redeem the code with the original verifier and exact redirect URI.
+- Reject redirects from the token endpoint so the authorization code, verifier, and client secret
+  cannot cross hosts or downgrade to HTTP.
 - Validate signature against discovery JWKS, exact issuer, intended audience/client, expiry/not-before,
   nonce, and required subject.
 - Use a confidential client with S256 PKCE. Store the client secret in Mystira's production Key
@@ -111,10 +118,14 @@ is confirmed in merged code.
 ### Session
 
 - Browser receives only an opaque or encrypted session cookie; no raw OIDC token in local storage.
+- Session cookies contain either an opaque server-side identifier or an authenticated-encryption
+  (AEAD) payload. Reject every modified or unauthenticated cookie.
 - Cookie is `Secure`, `HttpOnly`, host-only, `Path=/`, and `SameSite=Lax` unless the chosen library
   demonstrates a stricter compatible setting.
+- `/api/auth/session` returns `Cache-Control: no-store` for both signed-in and signed-out responses.
 - Session lifetime never exceeds the verified identity assertion or configured alpha maximum.
-- Server-side session invalidation is preferred for cohort removal and incident response.
+- Logout clears the browser cookie and revokes the server-side session or records an equivalent
+  denylist entry. Cohort removal and incident response use the same mandatory revocation path.
 - Logs may include a one-way safe correlation identifier, never the cookie or token.
 
 ### Cohort authorization
@@ -122,19 +133,21 @@ is confirmed in merged code.
 - Authentication by Mystira does not automatically authorize alpha access.
 - Maintain an operator-controlled allowlist of immutable Mystira subjects or application-user rows.
 - Unknown or disabled subjects receive 403 and no product data.
+- Protect invite, disable, and cohort-administration routes with a separate operator role or
+  operator allowlist. Normal cohort users receive 403, and every operator action is audited.
 - Alpha is Adult-only; the Mystira RP registration must enforce the same age class.
 
 ## Existing-auth retirement matrix
 
-| Existing surface                               | Required action                                                            |
-| ---------------------------------------------- | -------------------------------------------------------------------------- |
-| NextAuth GitHub/Google provider configuration  | Replace with the single verified Mystira provider                          |
-| `/api/auth/login` demo credentials             | Delete or return a fail-closed retired response before alpha               |
-| `/api/auth/github` and mock callback           | Delete                                                                     |
-| Supabase password/social login UI and callback | Remove from alpha navigation and runtime auth                              |
-| Corporate static login form                    | Hide with the non-alpha experience or wire to the same Mystira start route |
-| `localStorage.auth_token`                      | Remove and migrate all consumers to the server session                     |
-| Middleware with no auth enforcement            | Add explicit public-route allowlist and fail-closed protection             |
+| Existing surface                               | Required action                                                        |
+| ---------------------------------------------- | ---------------------------------------------------------------------- |
+| NextAuth GitHub/Google provider configuration  | Replace with the single verified Mystira provider                      |
+| `/api/auth/login` demo credentials             | Delete or return a fail-closed retired response before alpha           |
+| `/api/auth/github` and mock callback           | Delete                                                                 |
+| Supabase password/social login UI and callback | Remove from alpha navigation and runtime auth                          |
+| Corporate static login form                    | Remove or redirect to the clearly labelled Standard alpha landing page |
+| `localStorage.auth_token`                      | Remove and migrate all consumers to the server session                 |
+| Middleware with no auth enforcement            | Add explicit public-route allowlist and fail-closed protection         |
 
 CI must contain a negative test proving each retired endpoint cannot create an authenticated state.
 
@@ -147,6 +160,8 @@ CI must contain a negative test proving each retired endpoint cannot create an a
 - API routes return 401 for signed-out users and 403 for authenticated users outside the cohort.
 - Object access checks use the application user/subject on every read and write; route protection
   alone is insufficient.
+- Every state-changing cookie-authenticated API route requires a CSRF token or exact trusted
+  `Origin` validation. Mutations never use `GET`, and `SameSite=Lax` is not the sole CSRF control.
 - Remove any server-side use of service-role database credentials from routes that do not first
   establish and enforce the caller's authorization.
 
@@ -214,6 +229,9 @@ contains password, code, verifier, token, secret, raw cookie, or full authorizat
 - Cohort authorization and subject mapping.
 - Public/protected route classification.
 - Session expiry and revocation.
+- Cookie integrity, logout revocation, and denial when the pre-logout cookie is replayed.
+- Operator-route denial for an ordinary cohort user and audit capture for an operator action.
+- CSRF-token or exact-Origin rejection on every state-changing route.
 - Data ownership checks.
 
 ### OIDC integration tests
@@ -221,6 +239,8 @@ contains password, code, verifier, token, secret, raw cookie, or full authorizat
 - Successful authorization code plus S256 PKCE.
 - Missing/wrong verifier, state, nonce, issuer, audience, signature, and expired token.
 - Callback replay.
+- A discovery document with an untrusted endpoint and a redirecting token endpoint.
+- Pre-auth browser-binding mismatch and authenticated-session rotation after callback.
 - Disabled RP and non-invited user.
 - Key rotation through discovery/JWKS refresh.
 

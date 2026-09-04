@@ -94,7 +94,7 @@ No step may imply trade execution, custody, guaranteed return, or regulated inve
 
 - One canonical application origin and one supported alpha experience.
 - One identity authority: Mystira Identity.
-- One application session and authorization model, keyed by immutable OIDC `sub`, not email.
+- One application session and authorization model, keyed by immutable OIDC `(iss, sub)`, not email.
 - All non-public pages and APIs fail closed for signed-out or non-invited users.
 - One useful, repeatable analytics journey backed by an explicitly chosen data system of record.
 - Reproducible build and deployment with health, error, authentication, and journey telemetry.
@@ -147,7 +147,8 @@ No step may imply trade execution, custody, guaranteed return, or regulated inve
 - OIDC uses discovery, authorization code, S256 PKCE, state, and nonce through a maintained library.
 - Issuer, audience/client, signature, expiry, nonce, and redirect URI are validated exactly.
 - Return URLs are restricted to same-origin relative paths.
-- Session cookies are `Secure`, `HttpOnly`, host-scoped, and use an appropriate `SameSite` policy.
+- Session cookies are `Secure`, `HttpOnly`, host-only (no `Domain` attribute), and use an
+  appropriate `SameSite` policy.
 - Tests cover signed-out, invited, non-invited, expired, replayed, and malformed callback states.
 - Logging excludes passwords, authorization codes, verifiers, tokens, secrets, and raw session IDs.
 - Existing high-severity security findings that affect the alpha journey are closed before release.
