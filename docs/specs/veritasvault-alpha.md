@@ -37,22 +37,23 @@ selected on Baton epic `bcfc1e75`; this draft incorporates those choices for rev
 
 ## System context
 
-| Component                       | Alpha responsibility                                                           | Current state                                                   |
-| ------------------------------- | ------------------------------------------------------------------------------ | --------------------------------------------------------------- |
-| `neuralliquid/veritasvault-web` | Next.js UI, BFF auth callback/session, protected web/API routes, alpha journey | Deployed prototype with overlapping auth                        |
-| `neuralliquid/veritasvault`     | Post-alpha domain/API service unless separately approved                       | Not integrated with web; no registered authentication scheme    |
-| Mystira Identity                | OIDC issuer and adult-user authentication                                      | Cross-repo, gated change                                        |
-| Supabase                        | Alpha data system of record; Auth is legacy                                    | Used throughout web; auth must not remain a competing authority |
-| Vercel or Azure Container Apps  | Application hosting                                                            | Vercel is live; Azure preparation is unmerged                   |
-| Baton                           | Decisions, documentation, execution graph, evidence, approval gates            | Epic `bcfc1e75`                                                 |
+| Component                         | Alpha responsibility                                                           | Current state                                                                                            |
+| --------------------------------- | ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| `neuralliquid/veritasvault-web`   | Next.js UI, BFF auth callback/session, protected web/API routes, alpha journey | Deployed prototype with overlapping auth                                                                 |
+| `neuralliquid/veritasvault`       | Post-alpha domain/API service unless separately approved                       | Not integrated with web; no registered authentication scheme                                             |
+| Mystira Identity                  | OIDC issuer and adult-user authentication                                      | Cross-repo, gated change                                                                                 |
+| Supabase                          | Alpha data system of record; Auth is legacy                                    | Used throughout web; auth must not remain a competing authority                                          |
+| Cloudflare + Azure Container Apps | Edge and application origin                                                    | Cloudflare serves a stale artifact with legacy Vercel headers; intended Azure origin is not yet verified |
+| Baton                             | Decisions, documentation, execution graph, evidence, approval gates            | Epic `bcfc1e75`                                                                                          |
 
 ## Recommended target architecture
 
 For the shortest safe route to alpha:
 
 1. Keep the two repositories separate.
-2. Keep the current hosting provider and use `www.veritasvault.net` as the canonical alpha origin.
-   Hosting migration is a separate post-alpha change.
+2. Keep Cloudflare at the edge and use `www.veritasvault.net` as the canonical alpha origin. Create
+   or identify, deploy, and verify an Azure Container Apps origin before alpha. Vercel is not a
+   permitted host, fallback, or rollback target.
 3. Use `veritasvault-web` as a browser-facing BFF: the OIDC transaction, callback, token validation,
    and session are handled server-side.
 4. Use Supabase as the alpha data system of record. Retire its Auth feature as a user identity
@@ -269,12 +270,15 @@ Automated tests do not replace the authentic invited-user acceptance gate.
 ### Phase 0 — decisions and inventory
 
 Reconcile the four resolved Baton decisions into the documents; enumerate alpha pages/APIs/data;
-capture current hosting config and rollback; approve the PRD and technical specification.
+identify the real non-Vercel origin and Cloudflare configuration; define a non-Vercel rollback; and
+approve the PRD and technical specification.
 
 ### Phase 1 — quality and security baseline
 
 Create a reliable web CI gate, stop ignoring build/type errors, add route-level tests, and close
-alpha-impacting critical/high security findings.
+alpha-impacting critical/high security findings. Replace Vercel Analytics and Vercel Cron, then
+remove `@vercel/analytics`, Vercel environment detection, `vercel.app` API fallback, the
+`x-vercel-skip-auth` response header, and active Vercel deployment guidance.
 
 ### Phase 2 — app-owned auth, dark
 
@@ -293,18 +297,21 @@ issuer, scopes, client type, and deployment origin. Production apply remains gat
 
 ### Phase 5 — production alpha activation
 
-Deploy the exact reviewed artifact, close the explicit owner gate, enable the RP/configuration,
-verify health and telemetry, then run authentic invited-user acceptance. Roll back application
-config/client enablement if the callback or session fails; do not improvise redirect URIs.
+Deploy the exact reviewed artifact to the verified Azure Container Apps origin behind Cloudflare,
+purge stale edge content, and prove that responses contain no Vercel headers. Then close the
+explicit owner gate, enable the RP/configuration, verify health and telemetry, and run authentic
+invited-user acceptance. Roll back to the prior verified non-Vercel artifact if the callback or
+session fails; do not improvise redirect URIs.
 
 ## Rollback
 
-- Preserve the last known-good application artifact and hosting configuration.
+- Preserve the last known-good non-Vercel application artifact and hosting configuration.
 - Application auth is activated by a reversible configuration flag independent of DNS.
 - Mystira client enablement can be turned off without deleting its registration.
 - Never delete the prior provider/redirect configuration in the same step that first enables
   Mystira; remove it after acceptance in a separate reviewed change.
-- DNS and hosting migration, if later chosen, use their own rollback plan and approval.
+- Cloudflare and Azure origin changes use their own rollback plan and approval; no rollback points
+  to Vercel.
 
 ## Definition of alpha-ready
 

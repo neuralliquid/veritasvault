@@ -50,6 +50,10 @@ Fresh verification on 2026-09-04 found:
   integrated with the web application and does not register an authentication scheme.
 - `games.veritasvault.net` is DNS `NXDOMAIN` and is not part of this alpha.
 - No off-main branch contains a hidden production-ready authentication replacement.
+- A second GET after the owner confirmed Vercel is retired reached Cloudflare but returned a
+  month-old cached artifact carrying legacy `x-vercel-*` headers. No matching VeritasVault
+  Container App was visible in the active NeuralLiquid Azure subscription. The non-Vercel origin
+  and Cloudflare cache state therefore require explicit verification before alpha.
 
 This means the estate is neither an empty stub nor an alpha-ready product.
 
@@ -98,6 +102,8 @@ No step may imply trade execution, custody, guaranteed return, or regulated inve
 - All non-public pages and APIs fail closed for signed-out or non-invited users.
 - One useful, repeatable analytics journey backed by an explicitly chosen data system of record.
 - Reproducible build and deployment with health, error, authentication, and journey telemetry.
+- A verified non-Vercel origin behind `www.veritasvault.net`, with no Vercel runtime dependency,
+  fallback, analytics client, scheduled job, or response header.
 - Documented rollback and support path.
 - Authentic acceptance by at least one invited user on the production alpha origin.
 
@@ -110,8 +116,9 @@ No step may imply trade execution, custody, guaranteed return, or regulated inve
 - `vv-game-suite` or restoration of `games.veritasvault.net`.
 - Completing every dashboard, AI feature, API route, or domain document already present.
 - Forcing the .NET API into alpha solely because it exists.
-- Combining the Vercel-to-Azure migration with identity activation; the hosting move is not an alpha
-  prerequisite.
+- Reintroducing Vercel as a host, rollback target, analytics provider, scheduler, or API fallback.
+- A broader Azure platform redesign beyond establishing and verifying the required non-Vercel alpha
+  origin.
 - Registry edits, DNS changes, or Mystira Terraform changes from this repository.
 
 ## Functional requirements
@@ -193,7 +200,7 @@ The cohort size is deliberately small; qualitative evidence matters more than va
 | Decision                           | Selected direction                                                                                            | Baton decision |
 | ---------------------------------- | ------------------------------------------------------------------------------------------------------------- | -------------- |
 | Alpha experience                   | Standard only; one coherent retail analytics journey                                                          | `f4e3bab5`     |
-| Canonical origin and callback host | `www.veritasvault.net`; keep Azure migration separate                                                         | `d743950f`     |
+| Canonical origin and callback host | `www.veritasvault.net`; Cloudflare edge with a verified Azure Container Apps origin; no Vercel fallback         | `d743950f`     |
 | Alpha system of record             | Supabase data with Mystira as the sole identity authority; .NET remains post-alpha unless separately approved | `deb2ec15`     |
 | Mystira OIDC client contract       | Confidential client plus S256 PKCE; server-side BFF owns callback and secret                                  | `141c10a2`     |
 
