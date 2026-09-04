@@ -53,7 +53,9 @@ For the shortest safe route to alpha:
 1. Keep the two repositories separate.
 2. Keep Cloudflare at the edge and use `www.veritasvault.net` as the canonical alpha origin. Create
    or identify, deploy, and verify an Azure Container Apps origin before alpha. Vercel is not a
-   permitted host, fallback, or rollback target.
+   permitted host, fallback, or rollback target. Cloudflare-to-origin traffic must use HTTPS with
+   certificate validation enabled. Block direct public origin access with private ingress or an
+   authenticated, allowlisted Cloudflare-to-origin path.
 3. Use `veritasvault-web` as a browser-facing BFF: the OIDC transaction, callback, token validation,
    and session are handled server-side.
 4. Use Supabase as the alpha data system of record. Retire its Auth feature as a user identity
@@ -158,8 +160,9 @@ CI must contain a negative test proving each retired endpoint cannot create an a
 
 ## Web authorization
 
-- Public allowlist: landing, static assets, health/readiness, OIDC start/callback, and legally required
-  public pages.
+- Public allowlist: landing, static assets, health/readiness, OIDC start/callback, the minimal
+  signed-in-or-signed-out `/api/auth/session` view, and legally required public pages. The session
+  view returns no protected application data and is always `Cache-Control: no-store`.
 - Machine-authenticated allowlist: only explicitly inventoried service routes. If retained,
   `/api/cron/sync` requires its dedicated, rotated `CRON_SECRET` or an approved workload identity;
   a browser session alone never authorizes it. Failed or missing machine credentials return 401 and
@@ -168,6 +171,9 @@ CI must contain a negative test proving each retired endpoint cannot create an a
   default.
 - Server-rendered pages redirect signed-out users to Mystira start through a stable sign-in page.
 - API routes return 401 for signed-out users and 403 for authenticated users outside the cohort.
+- Protected server-rendered responses, protected API responses, and OIDC callback/logout responses
+  return `Cache-Control: no-store`. Any future exception requires a documented per-user cache key,
+  bounded lifecycle, and a cross-session cache-reuse test before approval.
 - Object access checks use the application user/subject on every read and write; route protection
   alone is insufficient.
 - Every state-changing cookie-authenticated API route requires a CSRF token or exact trusted
@@ -252,6 +258,10 @@ contains password, code, verifier, token, secret, raw cookie, or full authorizat
 - Data ownership checks, including cross-subject denial through the BFF.
 - Proof that an anonymous browser or a retired direct Supabase client cannot read or mutate any
   cohort-readable, user-owned, or operator-only record.
+- Cache-policy tests for protected pages/APIs and callback/logout responses, including denial of
+  cross-session response reuse.
+- Origin tests proving validated HTTPS from Cloudflare to Azure, direct-origin requests fail, and
+  the same request succeeds through the canonical Cloudflare hostname.
 
 ### OIDC integration tests
 

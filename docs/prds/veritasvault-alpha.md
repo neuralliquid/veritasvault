@@ -87,8 +87,8 @@ The minimum useful journey is:
 1. An invited adult user opens the canonical VeritasVault origin.
 2. The user signs in through Mystira Identity using authorization code with S256 PKCE.
 3. The user lands on one clearly labelled Standard dashboard.
-4. The user views a portfolio or seeded representative portfolio, its allocation, and at least one
-   explainable risk or analytics result.
+4. The user views a seeded, explicitly labelled representative portfolio, its allocation, and at
+   least one explainable risk or analytics result.
 5. The user can save a non-transactional preference or draft/watchlist and see it after returning.
 6. The user signs out and loses access to protected pages and APIs.
 
@@ -99,7 +99,8 @@ No step may imply trade execution, custody, guaranteed return, or regulated inve
 - One canonical application origin and one supported alpha experience.
 - One identity authority: Mystira Identity.
 - One application session and authorization model, keyed by immutable OIDC `(iss, sub)`, not email.
-- All non-public pages and APIs fail closed for signed-out or non-invited users.
+- All user-facing non-public pages and APIs fail closed for signed-out or non-invited users;
+  inventoried machine routes fail closed unless their dedicated machine credential is valid.
 - One useful, repeatable analytics journey backed by an explicitly chosen data system of record.
 - Reproducible build and deployment with health, error, authentication, and journey telemetry.
 - A verified non-Vercel origin behind `www.veritasvault.net`, with no Vercel runtime dependency,
@@ -113,6 +114,9 @@ No step may imply trade execution, custody, guaranteed return, or regulated inve
 - Child or teen accounts.
 - Corporate/enterprise workflows.
 - Wallet custody, signing, swaps, trade execution, deposits, withdrawals, or financial advice.
+- Importing, entering, or accepting an alpha participant's real holdings. Real portfolio data is a
+  post-alpha scope decision gated by the documented regulatory perimeter opinion, jurisdiction
+  exclusions, contracts/privacy baseline, and security review.
 - `vv-game-suite` or restoration of `games.veritasvault.net`.
 - Completing every dashboard, AI feature, API route, or domain document already present.
 - Forcing the .NET API into alpha solely because it exists.
@@ -128,7 +132,9 @@ No step may imply trade execution, custody, guaranteed return, or regulated inve
 - Mystira Identity is the only alpha sign-in authority.
 - Access is invite-only and Adult-only.
 - Demo credentials, mock callbacks, and unused competing provider buttons are absent or fail closed.
-- Protected pages and APIs enforce the same session and cohort authorization.
+- User-facing protected pages and APIs enforce the same session and cohort authorization.
+- Explicitly inventoried machine routes, including a retained scheduled sync route, require a
+  dedicated rotated secret or approved workload identity and never accept a browser session alone.
 - Logout invalidates the VeritasVault session. Provider-wide logout is added only if its exact
   post-logout redirect is registered and tested.
 
@@ -136,7 +142,8 @@ No step may imply trade execution, custody, guaranteed return, or regulated inve
 
 - The landing page clearly identifies the alpha and links to its single supported experience.
 - A signed-in user can reach a stable dashboard without dead navigation.
-- The selected portfolio/analytics journey uses real or explicitly labelled representative data.
+- The selected portfolio/analytics journey uses only seeded, explicitly labelled representative
+  data; it does not accept or persist an alpha participant's real holdings.
 - Data provenance and freshness are visible where a decision could otherwise be misleading.
 - Errors provide a recoverable next action without exposing identity or system internals.
 
@@ -197,12 +204,12 @@ The cohort size is deliberately small; qualitative evidence matters more than va
 
 ## Resolved decisions
 
-| Decision                           | Selected direction                                                                                            | Baton decision |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------- | -------------- |
-| Alpha experience                   | Standard only; one coherent retail analytics journey                                                          | `f4e3bab5`     |
-| Canonical origin and callback host | `www.veritasvault.net`; Cloudflare edge with a verified Azure Container Apps origin; no Vercel fallback       | `d743950f`     |
-| Alpha system of record             | Supabase data with Mystira as the sole identity authority; .NET remains post-alpha unless separately approved | `deb2ec15`     |
-| Mystira OIDC client contract       | Confidential client plus S256 PKCE; server-side BFF owns callback and secret                                  | `141c10a2`     |
+| Decision                           | Selected direction                                                                                                                            | Baton decision |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
+| Alpha experience                   | Standard only; one coherent retail analytics journey                                                                                          | `f4e3bab5`     |
+| Canonical origin and callback host | `www.veritasvault.net`; Cloudflare edge targeting Azure Container Apps; origin verification is a separate deployment gate; no Vercel fallback | `d743950f`     |
+| Alpha system of record             | Supabase data with Mystira as the sole identity authority; .NET remains post-alpha unless separately approved                                 | `deb2ec15`     |
+| Mystira OIDC client contract       | Confidential client plus S256 PKCE; server-side BFF owns callback and secret                                                                  | `141c10a2`     |
 
 These choices were selected by the product owner on 2026-09-04 and are recorded on Baton epic
 `bcfc1e75`. They settle direction but do not satisfy the separate document-review or production
