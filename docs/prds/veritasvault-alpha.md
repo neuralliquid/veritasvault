@@ -200,7 +200,7 @@ The cohort size is deliberately small; qualitative evidence matters more than va
 | Decision                           | Selected direction                                                                                            | Baton decision |
 | ---------------------------------- | ------------------------------------------------------------------------------------------------------------- | -------------- |
 | Alpha experience                   | Standard only; one coherent retail analytics journey                                                          | `f4e3bab5`     |
-| Canonical origin and callback host | `www.veritasvault.net`; Cloudflare edge with a verified Azure Container Apps origin; no Vercel fallback         | `d743950f`     |
+| Canonical origin and callback host | `www.veritasvault.net`; Cloudflare edge with a verified Azure Container Apps origin; no Vercel fallback       | `d743950f`     |
 | Alpha system of record             | Supabase data with Mystira as the sole identity authority; .NET remains post-alpha unless separately approved | `deb2ec15`     |
 | Mystira OIDC client contract       | Confidential client plus S256 PKCE; server-side BFF owns callback and secret                                  | `141c10a2`     |
 

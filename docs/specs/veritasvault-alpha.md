@@ -58,7 +58,9 @@ For the shortest safe route to alpha:
    and session are handled server-side.
 4. Use Supabase as the alpha data system of record. Retire its Auth feature as a user identity
    authority; data rows map to immutable Mystira `(iss, sub)` through an explicit application-user
-   record.
+   record. Every non-public Supabase operation passes through the BFF, which enforces route and
+   object authorization from the server session before database access; the browser receives no
+   direct Supabase credential for protected data.
 5. Leave the .NET API out of the alpha request path. Bringing it into scope requires a separate
    approved decision and an independently authenticated deployment plan.
 
@@ -208,8 +210,14 @@ No VeritasVault task may edit `mystira-workspace` as an incidental change.
 Before implementation, inventory each alpha page/API and classify it as public, cohort-readable,
 user-owned, operator-only, or excluded. For Supabase-backed data:
 
-- Confirm row-level security for browser-accessible tables.
-- Prefer server-side access through the BFF where authorization requires application context.
+- Limit direct browser access to data deliberately classified as public, and retain row-level
+  security as defense in depth for every browser-accessible table.
+- Route every non-public read and write through the BFF. The BFF must establish the Mystira-backed
+  application session and enforce route, cohort, role, and object-level authorization before
+  querying Supabase; permissive anonymous policies are prohibited for protected data.
+- Remove or migrate every retained browser Supabase client that accesses non-public data. The alpha
+  design does not mint a replacement browser database token or rely on Supabase RLS to interpret the
+  BFF cookie.
 - Never expose the service-role key to the browser.
 - Store the Mystira `(iss, sub)` mapping separately from mutable profile/email fields.
 - Define deletion, cohort-removal, and audit behavior before inviting users.
@@ -241,7 +249,9 @@ contains password, code, verifier, token, secret, raw cookie, or full authorizat
 - Operator-route denial for an ordinary cohort user and audit capture for an operator action.
 - CSRF-token or exact-Origin rejection on every state-changing route.
 - Machine-route rejection for missing, wrong, expired, or browser-session-only credentials.
-- Data ownership checks.
+- Data ownership checks, including cross-subject denial through the BFF.
+- Proof that an anonymous browser or a retired direct Supabase client cannot read or mutate any
+  cohort-readable, user-owned, or operator-only record.
 
 ### OIDC integration tests
 
