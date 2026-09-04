@@ -56,7 +56,8 @@ For the shortest safe route to alpha:
 3. Use `veritasvault-web` as a browser-facing BFF: the OIDC transaction, callback, token validation,
    and session are handled server-side.
 4. Use Supabase as the alpha data system of record. Retire its Auth feature as a user identity
-   authority; data rows map to Mystira `sub` through an explicit application-user record.
+   authority; data rows map to immutable Mystira `(iss, sub)` through an explicit application-user
+   record.
 5. Leave the .NET API out of the alpha request path. Bringing it into scope requires a separate
    approved decision and an independently authenticated deployment plan.
 
@@ -131,7 +132,8 @@ is confirmed in merged code.
 ### Cohort authorization
 
 - Authentication by Mystira does not automatically authorize alpha access.
-- Maintain an operator-controlled allowlist of immutable Mystira subjects or application-user rows.
+- Maintain an operator-controlled allowlist of immutable Mystira `(iss, sub)` pairs or
+  application-user rows.
 - Unknown or disabled subjects receive 403 and no product data.
 - Protect invite, disable, and cohort-administration routes with a separate operator role or
   operator allowlist. Normal cohort users receive 403, and every operator action is audited.
@@ -203,7 +205,7 @@ user-owned, operator-only, or excluded. For Supabase-backed data:
 - Confirm row-level security for browser-accessible tables.
 - Prefer server-side access through the BFF where authorization requires application context.
 - Never expose the service-role key to the browser.
-- Store the Mystira subject mapping separately from mutable profile/email fields.
+- Store the Mystira `(iss, sub)` mapping separately from mutable profile/email fields.
 - Define deletion, cohort-removal, and audit behavior before inviting users.
 
 ## Observability
@@ -226,7 +228,7 @@ contains password, code, verifier, token, secret, raw cookie, or full authorizat
 ### Unit and contract tests
 
 - Return-path and redirect-origin validation.
-- Cohort authorization and subject mapping.
+- Cohort authorization and `(iss, sub)` mapping.
 - Public/protected route classification.
 - Session expiry and revocation.
 - Cookie integrity, logout revocation, and denial when the pre-logout cookie is replayed.
