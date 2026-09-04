@@ -157,7 +157,12 @@ CI must contain a negative test proving each retired endpoint cannot create an a
 
 - Public allowlist: landing, static assets, health/readiness, OIDC start/callback, and legally required
   public pages.
-- Everything else is protected by default.
+- Machine-authenticated allowlist: only explicitly inventoried service routes. If retained,
+  `/api/cron/sync` requires its dedicated, rotated `CRON_SECRET` or an approved workload identity;
+  a browser session alone never authorizes it. Failed or missing machine credentials return 401 and
+  cannot expose application data.
+- Everything outside the public and machine-authenticated allowlists requires a cohort session by
+  default.
 - Server-rendered pages redirect signed-out users to Mystira start through a stable sign-in page.
 - API routes return 401 for signed-out users and 403 for authenticated users outside the cohort.
 - Object access checks use the application user/subject on every read and write; route protection
@@ -234,6 +239,7 @@ contains password, code, verifier, token, secret, raw cookie, or full authorizat
 - Cookie integrity, logout revocation, and denial when the pre-logout cookie is replayed.
 - Operator-route denial for an ordinary cohort user and audit capture for an operator action.
 - CSRF-token or exact-Origin rejection on every state-changing route.
+- Machine-route rejection for missing, wrong, expired, or browser-session-only credentials.
 - Data ownership checks.
 
 ### OIDC integration tests
@@ -244,6 +250,8 @@ contains password, code, verifier, token, secret, raw cookie, or full authorizat
 - A discovery document with an untrusted endpoint and a redirecting token endpoint.
 - Pre-auth browser-binding mismatch and authenticated-session rotation after callback.
 - Disabled RP and non-invited user.
+- An otherwise invited child or teen identity rejected before application data is exposed, proving
+  the Adult-only RP and application policy is not masked by cohort denial.
 - Key rotation through discovery/JWKS refresh.
 
 ### Browser journeys
